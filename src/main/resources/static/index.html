@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>TradeStream Dashboard 🚀</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #161b22;
+            padding: 1rem;
+            text-align: center;
+            border-bottom: 1px solid #30363d;
+            color: #58a6ff;
+        }
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            gap: 10px;
+            padding: 10px;
+        }
+        .card {
+            flex: 1;
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+        }
+        .card-header {
+            padding: 10px;
+            background-color: #21262d;
+            border-bottom: 1px solid #30363d;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+        }
+        .log-container {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .market-item { color: #7ee787; border-bottom: 1px solid #21262d; padding: 2px 0; }
+        .analytics-item { color: #79c0ff; border-left: 3px solid #79c0ff; padding-left: 8px; margin-bottom: 5px; background: #1f242c; }
+        .alert-item { color: #ff7b72; font-weight: bold; animation: blink 1s infinite; }
+
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0d1117; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>TradeStream Real-Time Analytics</h1>
+</header>
+
+<div class="main-container">
+    <div class="card">
+        <div class="card-header">
+            <span>📊 CANLI PİYASA VERİSİ</span>
+            <span id="status" style="color: #ff7b72;">Bağlanıyor...</span>
+        </div>
+        <div id="market-logs" class="log-container"></div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span>📈 30SN HAREKETLİ ORTALAMA</span>
+        </div>
+        <div id="analytics-logs" class="log-container"></div>
+    </div>
+</div>
+
+<script>
+    var socket = new SockJS('/ws');
+    var stompClient = Stomp.over(socket);
+    stompClient.debug = null; // Konsol kirliliğini önlemek için
+
+    stompClient.connect({}, function (frame) {
+        document.getElementById("status").innerText = "● CANLI";
+        document.getElementById("status").style.color = "#7ee787";
+
+        // 1. Piyasa Verilerini Dinle
+        stompClient.subscribe('/topic/market', function (val) {
+            var data = JSON.parse(val.body);
+            addLog("market-logs", `<b>${data.symbol}</b>: $${data.price.toFixed(2)}`, "market-item");
+        });
+
+        // 2. Kafka Streams Analizlerini Dinle
+        stompClient.subscribe('/topic/analytics', function (val) {
+            addLog("analytics-logs", val.body, "analytics-item");
+        });
+
+        // 3. Alarmları Dinle
+        stompClient.subscribe('/topic/alerts', function (val) {
+            addLog("market-logs", val.body, "alert-item");
+        });
+    });
+
+    function addLog(containerId, message, className) {
+        var container = document.getElementById(containerId);
+        var div = document.createElement("div");
+        div.className = className;
+        div.innerHTML = "[" + new Date().toLocaleTimeString() + "] " + message;
+
+        container.prepend(div); // En yeniyi üste ekle
+
+        // Hafıza yönetimi: 50 satırdan fazlasını sil
+        if (container.childElementCount > 50) {
+            container.removeChild(container.lastChild);
+        }
+    }
+</script>
+
+</body>
+</html>
