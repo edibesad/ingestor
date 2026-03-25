@@ -37,6 +37,9 @@ jobs:
             sleep 2
           done
 
+      - name: Make Maven Wrapper executable
+        run: chmod +x ./mvnw
+
       - name: Build and Test
         run: ./mvnw clean verify
 
